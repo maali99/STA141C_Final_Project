@@ -1,0 +1,13 @@
+---
+title: "141C Project"
+output: html_document
+---
+## Introduction
+The following dataset...
+
+
+```{r}
+data <- read.table("adult (1).data")
+scatter.smooth(data$month,data$pm2.5)
+```
+
