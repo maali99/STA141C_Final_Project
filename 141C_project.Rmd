@@ -7,7 +7,7 @@ The following dataset...
 
 
 ```{r}
-data <- read.table("adult (1).data")
-scatter.smooth(data$month,data$pm2.5)
+data <- read.table("adult.data")
+scatter.smooth(data$V2,data$V4)
 ```
 
