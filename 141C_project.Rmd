@@ -3,11 +3,23 @@ title: "141C Project"
 output: html_document
 ---
 ## Introduction
-The following dataset...
+We decided to run logistic regression on our dataset. Model selection was dictated by bootstrapping the data and averaging out the resulting p-values of each model to decide which variables were most significant in order to retain them for the best model. 
 
 
 ```{r}
 data <- read.table("adult.data")
-scatter.smooth(data$V2,data$V4)
+
+# null logistic model
+nullModel = glm(data$V15 ~ 1, family = binomial(), data = data)
+
+#best logistic model derived from bootstrapping data
+model = glm(data$V15)
+
+```
+
+## Analysis of odds
+According to the model, 
+```{r}
+
 ```
 
