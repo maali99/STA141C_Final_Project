@@ -1,0 +1,308 @@
+---
+title: "STA 141C Final Project"
+author: "Sukhween Bhullar"
+date: "3/17/2020"
+output: html_document
+---
+
+```{r}
+#read the data and rename the columns
+library(readr)
+url1 <- "https://archive.ics.uci.edu/ml/machine-learning-databases/adult/adult.data"
+data1 <- read.csv(url1, header = FALSE)
+
+colnames(data1) <- c("age",
+                     "workclass",
+                     "fnlwgt",
+                     "education",
+                     "education_num",
+                     "marital_status",
+                     "occupation",
+                     "relationship",
+                     "race",
+                     "sex",
+                     "capital_gain",
+                     "capital_loss",
+                     "hours_per_week",
+                     "native_country",
+                     "income")
+
+#take out the rows with the missing data
+data1[data1 == " ?"] = NA
+data1 = na.omit(data1)
+```
+
+```{r}
+#split the rows into testing data and training data 
+
+data1_test= data1[24131:nrow(data1),] #testing data
+data1= data1[1:24130,] #training data
+
+```
+
+Logistic Regression (Without Bootstrapping)
+```{r}
+fullmodel <- glm(income ~., family = binomial, data = data1)
+summary(fullmodel)
+
+```
+
+```{r}
+#the full model gives us approximately 90 estimates, so we shifted to a simpler model, taking out variables
+#with a lot of levels
+model1 <- glm(income ~ age + race + sex + education_num + hours_per_week, family = binomial, data = data1)
+
+error1 <- summary(model1)$coef[,1]
+error2 <- model1$coefficients
+```
+
+Implementing Bag of Little Bootstraps with Logistic Regression on `model1`
+```{r}
+# For every iteration
+# randomize data
+# find the slopes
+
+suppressMessages(library(tidyverse))
+library(furrr)
+
+plan(multiprocess, workers = 4)
+B = 10000
+n = nrow(data1)
+
+m <- 10
+groups <- sample(seq_len(m), n, replace = TRUE)
+map(seq_len(m), ~write_csv(data1[groups==.,], str_c("part",.,".csv")))
+
+single_boot <- function(i, ind_part){
+  subsample = read_csv(str_c("part",ind_part, ".csv"))
+  freqs = rmultinom(1, n, rep(1, nrow(subsample)))
+  model1 <- glm(as.factor(income) ~ age + race + sex + education_num + hours_per_week, weight = freqs, family = binomial, data = subsample)
+  as.data.frame(t(as.matrix(model1$coefficients)))
+}
+
+```
+
+After getting running the bootstraps we implemented three different ways to get an estimate of the slopes by using: 
++confidence interval
++median
++mean
+```{r}
+#Confidence interval at alpha =.05
+ci_list = future_map(seq_len(m), ~{
+  map_dfr(seq_len(B), single_boot, ind_part =.) %>%
+    map_dfr(~quantile(., c(0.025,0.975))) } )
+
+ci1 <- reduce(ci_list, `+`) / length(ci_list)
+```
+
+```{r}
+#median using the median function
+med_list = future_map(seq_len(m), ~{
+  map_dfr(seq_len(B), single_boot, ind_part =.) %>%
+    map_dfr(~median(.)) } )
+
+med1 <- reduce(med_list, `+`) / length(med_list)
+```
+
+```{r}
+#mean using the mean function
+mean_list = future_map(seq_len(m), ~{
+  map_dfr(seq_len(B), single_boot, ind_part =.) %>%
+    map_dfr(~mean(.)) } )
+
+mean1 <- reduce(mean_list, `+`) / length(mean_list)
+```
+
+To check the accuracy of our models and to find which method (confidence interval, median and mean) gives the best result we built our own predict function to test the above models on our test data. 
+```{r}
+#initialize counters
+incorrect_50plus=0 #counter for number of incorrect classifications of incomes greater than 50k
+correct_50plus=0 #counter for number of correct classifications of incomes greater than 50k
+incorrect_50less=0 #counter for number of incorrect classifications of incomes less than 50k
+correct_50less=0 #counter for number of correct classifications of incomes less than 50k
+
+predict_blb_glm <-function(method, test_data){
+  
+  #the accuracy vector will contain a vector of all the counters
+  acccuracy_vector <- c("Incorrect(>50k)", "Correct(>50k)","Incorrect(<=50k)", "Correct(<=50k)")
+  
+  #from the test data select the variables of interest
+  test_data <- test_data %>% 
+    select(age, race, sex, education_num, hours_per_week,income)
+  
+  #this for loop will predict the income brackets
+  for(i in seq_len(nrow(test_data))){
+    
+    test_val=test_data[i,]
+    
+    #we must use multiple if else statements to check for the race variable
+    #because it's a categorical variable
+    #use the odds= Intercept_est+
+        #age_beta1*age +
+        #`raceAsian-Pac-Islander`_beta *(0 or 1) +
+        #raceBlack_beta *(0 or 1) +
+        #raceOther_beta *(0 or 1) +
+        #raceWhite_beta *( 0 or 1) +
+        #education_num_beta *(education_num) +
+        #hours_per_week_beta *(hours_per_week)
+    
+    if(as.character(droplevels(test_val$race))== " White"){
+
+     odds= method$`(Intercept)`+
+        method$age*test_val$age +
+        method$`raceAsian-Pac-Islander`*0 +
+        method$raceBlack*0 +
+        method$raceOther*0 +
+        method$raceWhite*1 +
+        method$education_num*test_val$education_num +
+        method$hours_per_week*test_val$hours_per_week
+      
+    }else if(as.character(droplevels(test_val$race))==" Asian-Pac-Islander"){
+      odds= method$`(Intercept)`+
+        method$age*test_val$age +
+        method$`raceAsian-Pac-Islander`*1 +
+        method$raceBlack*0 +
+        method$raceOther*0 +
+        method$raceWhite*0 +
+        method$education_num*test_val$education_num +
+        method$hours_per_week*test_val$hours_per_week
+      
+    }else if(as.character(droplevels(test_val$race))==" Black"){
+      
+      odds= method$`(Intercept)`+
+        method$age*test_val$age +
+        method$`raceAsian-Pac-Islander`*0 +
+        method$raceBlack*1 +
+        method$raceOther*0 +
+        method$raceWhite*0 +
+        method$education_num*test_val$education_num +
+        method$hours_per_week*test_val$hours_per_week
+      
+    }else if(as.character(droplevels(test_val$race))==" Other"){
+      
+      odds= method$`(Intercept)`+
+        method$age*test_val$age +
+        method$`raceAsian-Pac-Islander`*0 +
+        method$raceBlack*0 +
+        method$raceOther*1 +
+        method$raceWhite*0 +
+        method$education_num*test_val$education_num +
+        method$hours_per_week*test_val$hours_per_week
+      
+    }else if(as.character(droplevels(test_val$race))==" Amer-Indian-Eskimo"){
+      
+      odds= method$`(Intercept)`+
+        method$age*test_val$age +
+        method$`raceAsian-Pac-Islander`*0 +
+        method$raceBlack*0 +
+        method$raceOther*0 +
+        method$raceWhite*0 +
+        method$education_num*test_val$education_num +
+        method$hours_per_week*test_val$hours_per_week
+      
+    }
+    
+    #use the equation exp(odds)/(1+exp(odds)) to get a probability value
+    probability = exp(odds)/(1+exp(odds))
+    
+    # if the probability is greater than .5 then the predicted income is less than 50k 
+    if(probability>.5){
+      
+      pred_income = " <=50K"
+      #if the predicted income for the test data is equal to the actual income, increment the correct counter
+      if(pred_income == as.character(droplevels(test_val$income))){ 
+        
+        correct_50less = correct_50less +1
+      }else{
+      #otherwise increment incorrect counter
+        incorrect_50less = incorrect_50less +1
+      }
+    
+    #otherwise the predicted income is greater than 50k  
+    }else{
+      
+      pred_income = " >50K"
+      #if the predicted income for the test data is equal to the actual income, increment the correct counter
+      if(pred_income == as.character(droplevels(test_val$income))){
+        correct_50plus = correct_50plus +1
+      }else{
+        #otherwise increment incorrect counter
+        incorrect_50plus = incorrect_50plus +1
+      }
+      
+    }
+    
+    
+    accuracy_vector<- c(incorrect_50plus, correct_50plus, incorrect_50less, correct_50less)
+    
+  }
+  
+  return(accuracy_vector)
+}
+```
+
+```{r}
+#use mean1 to calculate an accuracy vector on the test data
+predict_blb_glm(mean1, data1_test)
+
+#use med1 to calculate an accuracy vector on the test data
+predict_blb_glm(med1, data1_test)
+
+#use the confidence interval to calculate an accuracy vector on the test data
+predict_blb_glm(ci1[1,],data1_test) #this calculates for the lower bound
+
+predict_blb_glm(ci1[2,],data1_test) #this calculates for the upper bound
+```
+
+After using calculating the accuracy rates, we can conclude that teh Logistic Regression Model is not a good choice for this data, so we switched over to using Random Forest because of how categorical our data is. 
+First we will use the tree function to construct a classification and regression tree. 
+```{r}
+#implement the tree function to 
+library(tree)
+#note we cannot use all the variables because the tree function has a limit to how many levels we can have
+#if we add all the variables then we would exceed that limit, so we used most of the variables, but took out a
+#a few of them
+tree_income <- tree(income ~ 
+                      age+
+                      workclass+
+                      education+
+                      marital_status+
+                      occupation+
+                      relationship+
+                      race+
+                      hours_per_week+
+                      sex
+                      , data1)
+
+plot(tree_income, type = "uniform")
+text(tree_income, pretty = 1, all = TRUE, cex = 0.7)
+```
+
+Now we wil use this function to create a Bag of Little Random Forests. 
+```{r}
+suppressMessages(library(tidyverse))
+library(furrr)
+
+plan(multiprocess, workers = 4)
+
+B <- 10
+m <- 8
+n <- nrow(data1)
+
+col_names <- c("age","workclass","education","marital_status","occupation","relationship","race","sex", "capital_gain","capital_loss","hours_per_week") 
+
+map_dfr(seq_len(B), function(i) {
+  col_names <- c("income", sample(col_names, m))
+  income_boot <- data1[sample(n, n, replace = TRUE), col_names]
+  tree_income_boot <- tree(income ~ ., income_boot)
+  predict(tree_income_boot, data1_test)
+})
+probability_rf
+```
+
+
+
+
+
+
+
