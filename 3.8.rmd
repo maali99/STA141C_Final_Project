@@ -1,0 +1,80 @@
+---
+title: "STA 141C Final Project"
+author: "Sukhween Bhullar"
+date: "3/8/2020"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+data<- read.csv("https://archive.ics.uci.edu/ml/machine-learning-databases/adult/adult.data", header=FALSE)
+
+colnames(data) <- c("age",
+                     "workclass",
+                     "fnlwgt",
+                     "education",
+                     "education_num",
+                     "marital_status",
+                     "occupation",
+                     "relationship",
+                     "race",
+                     "sex",
+                     "capital_gain",
+                     "capital_loss",
+                     "hours_per_week",
+                     "native_country",
+                     "income")
+
+data[data == " ?"] = NA
+data = na.omit(data)
+```
+
+```{r}
+#histograms of the conitnous quanitative variables 
+par(mfrow=c(3,2))
+hist(data$age, xlab="Age", main="Histogram of Age")
+hist(data$capital_gain, xlab="Capital Gain", main="Histogram of Capital Gain")
+hist(data$capital_loss, xlab="Capital Loss", main="Histogram of Capital Loss")
+hist(data$education_num, xlab="Education Number", main="Histogram of Education Number")
+hist(data$hours_per_week, xlab="Hours Per Week", main="Histogram of Hours Per Week")
+#hist(data_vars$fnlwgt, xlab="fnlwgt")
+par(mfrow=c(1,1))
+
+#correlation matrix with each qualitative variable and the response, based on a chisquared test
+attach(data)
+library(corrplot)
+
+par(mfrow=c(1,3))
+
+workclass_income<-chisq.test(table(droplevels(workclass), 
+      income_group))
+corrplot(workclass_income$residuals, is.cor=FALSE) 
+
+occupation_income<-chisq.test(table(droplevels(occupation), 
+      income_group))
+corrplot(occupation_income$residuals, is.cor=FALSE) 
+
+education_income<-chisq.test(table(education, 
+      income_group))
+corrplot(education_income$residuals, is.cor=FALSE)
+
+race_income<-chisq.test(table(race, 
+      income_group))
+corrplot(race_income$residuals, is.cor=FALSE)
+
+sex_income<-chisq.test(table(sex, 
+      income_group))
+corrplot(sex_income$residuals, is.cor=FALSE)
+
+marital_income<-chisq.test(table(marital_status, 
+      income_group))
+corrplot(marital_income$residuals, is.cor=FALSE)
+
+cor(age, education_num, hours_per_week)
+cor(age,hours_per_week)
+cor(education_num, hours_per_week)
+
+par(mfrow=c(1,1))
+
+```
+
