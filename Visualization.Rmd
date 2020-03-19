@@ -1,0 +1,104 @@
+---
+title: "STA 141C Final Project"
+author: "Yaosong Zhan"
+date: "2020/3/19"
+output: html_document
+---
+Import library
+```{r}
+library(ggplot2)
+library(tidyverse)
+library(readr)
+```
+
+Import data
+```{r}
+url1 <- "https://archive.ics.uci.edu/ml/machine-learning-databases/adult/adult.data"
+data1 <- read.csv(url1, header = FALSE)
+
+colnames(data1) <- c("age",
+                     "workclass",
+                     "fnlwgt",
+                     "education",
+                     "education_num",
+                     "marital_status",
+                     "occupation",
+                     "relationship",
+                     "race",
+                     "sex",
+                     "capital_gain",
+                     "capital_loss",
+                     "hours_per_week",
+                     "native-country",
+                     "income")
+attach(data1)
+```
+
+Plot the figure of relationship between sex and income
+```{r}
+fig = ggplot(data = data1, mapping = aes(x = sex, fill = income))
+fig + geom_bar(position = "fill")
+```
+
+The percentage of income > 50K in the male group is higher than that in the female group
+
+Plot the number of income > 50K and income <=50K grouped by sex and education_num
+```{r}
+
+fig = ggplot(data = data1, mapping = aes(x = education_num, fill = income))
+fig + geom_bar() + facet_grid(sex, scales = "free_y")
+```
+
+Plot  the number of income > 50K and income <=50K grouped by race and education
+```{r}
+fig = ggplot(data = data1, mapping = aes(x = education_num, fill = income))
+fig + geom_bar() + facet_grid(race, scales = "free_y")
+```
+
+There are few adults whose incomes are more than 50K in the lower education number groups. On the contrary, in groups with education number greater than 15, the percentage of income > 50K is nearly 100%. We find this feature in all race groups and sex groups.
+
+Plot the distribution of age groupped by income
+```{r}
+fig = ggplot(data = data1, mapping = aes(x = age, fill = income, color = income))
+fig + geom_density(alpha = 0.3)
+```
+
+We find that the distribution of age in income < 50K group and income > 50K group are different. In the income < 50K group, the peak of age distribution is below 25, while in the income > 50K, the maximum of the distribution is around 40. 
+
+Plot the percentage of income >= 50K in each hours_per_week group
+```{r}
+hours_income = table(data1[,c('hours_per_week','income')])
+hours_income <- as.data.frame(prop.table(hours_income, 1))
+hours_income_over50 = hours_income[(nrow(hours_income)/2+1):nrow(hours_income),]
+fig = ggplot(data = hours_income_over50, 
+             mapping = aes(
+             x = hours_per_week, 
+             y = Freq,
+             group = income))
+fig + geom_area(fill = "chartreuse4",alpha = 0.7) + geom_smooth()+
+  scale_x_discrete(
+    breaks = c(1, 20, 40, 60, 80, 99)
+  )+
+  labs(
+    y = "Percentage of Income >= 50K"
+  )
+```
+
+The relationship between income and hours per week is not monotonous. Sixty hours per week has the highest percentage of income > 50K.
+
+Plot the distribution of captial_gain and capital_loss
+```{r}
+data1 = data1 %>% mutate(
+  capital_gain_over0 = if_else(capital_gain > 0,"Capital Gain > 0","Capital Gain = 0"),
+  capital_loss_over0 = if_else(capital_loss > 0,"Capital loss > 0","Capital loss = 0"))
+```
+
+
+```{r}
+fig = ggplot(data = data1, mapping = aes(x = capital_gain_over0))
+fig + geom_bar(fill = 'orange')
+```
+```{r}
+fig = ggplot(data = data1, mapping = aes(x = capital_loss_over0))
+fig + geom_bar(fill = 'orange')
+```
