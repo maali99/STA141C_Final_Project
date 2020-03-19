@@ -1,3 +1,23 @@
 # STA141C_Final_Project
 
-This is a preview of our project, we can write up an introduction here and have the full report on a RMD file or whatever else works
+OUTLINE:
+
+Introduction 
+-Goal 
+-Source of data
+-Questions 
+-Methodology
+-Variables 
+
+Exploratory Data Analysis
+-Visualizations 
+-Reason for Dropping variables 
+-Final selection 
+
+Bootstrap 
+-estimate se
+-chart of estimates
+
+Analysis
+- logistic regression
+- analysis of odds
