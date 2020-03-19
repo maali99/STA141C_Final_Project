@@ -8,6 +8,9 @@ output: html_document
 ```{r}
 #read the data and rename the columns
 library(readr)
+library(ggplot2)
+library(tidyverse)
+library(readr)
 url1 <- "https://archive.ics.uci.edu/ml/machine-learning-databases/adult/adult.data"
 data1 <- read.csv(url1, header = FALSE)
 
@@ -30,6 +33,95 @@ colnames(data1) <- c("age",
 #take out the rows with the missing data
 data1[data1 == " ?"] = NA
 data1 = na.omit(data1)
+```
+
+Some Pre-liminary Data Exploration
+```{r}
+
+attach(data1)  
+
+#age + race + sex + education_num + hours_per_week
+
+# Plot ratios of income in male group and female group
+fig = ggplot(data = data1, mapping = aes(x = sex, fill = income))
+fig1 = fig + geom_bar(position = "fill")
+fig1
+
+# plot the number of income > 50K and income <=50K grouped by sex and education_num
+fig = ggplot(data = data1, mapping = aes(x = education_num, fill = income))
+fig2 = fig + geom_bar() + facet_grid(sex, scales = "free_y")
+fig2
+
+# plot  the number of income > 50K and income <=50K grouped by race and education
+fig = ggplot(data = data1, mapping = aes(x = education_num, fill = income))
+fig3 = fig + geom_bar() + facet_grid(race, scales = "free_y")
+fig3
+
+# plot the distribution of age groupped by income
+fig = ggplot(data = data1, mapping = aes(x = age, fill = income, color = income))
+fig4 = fig + geom_density(alpha = 0.3)
+fig4
+
+# plot the percentage of income >= 50K in each hours_per_week group
+# hours_income = table(data1[,c('hours_per_week','income')])
+# hours_income <- as.data.frame(prop.table(hours_income, 1))
+# hours_income_over50 = hours_income[(nrow(hours_income)/2+1):nrow(hours_income),]
+# hours_income_over50
+
+fig = ggplot(data = hours_income_over50, 
+             mapping = aes(
+             x = hours_per_week, 
+             y = Freq,
+             group = income))
+fig4 = fig + geom_area(fill = "chartreuse4",alpha = 0.7) + geom_smooth()+
+  scale_x_discrete(
+    breaks = c(1, 20, 40, 60, 80, 99)
+  )+
+  labs(
+    y = "Percentage of Income >= 50K"
+  )
+fig4
+
+
+detach(data1)
+
+#histograms of the continuous quanitative variables 
+par(mfrow=c(3,2))
+hist(data$age, xlab="Age", main="Histogram of Age")
+hist(data$capital_gain, xlab="Capital Gain", main="Histogram of Capital Gain")
+hist(data$capital_loss, xlab="Capital Loss", main="Histogram of Capital Loss")
+hist(data$education_num, xlab="Education Number", main="Histogram of Education Number")
+hist(data$hours_per_week, xlab="Hours Per Week", main="Histogram of Hours Per Week")
+#hist(data_vars$fnlwgt, xlab="fnlwgt")
+par(mfrow=c(1,1))
+
+#correlation matrix with each qualitative variable and the response, based on a chisquared test
+attach(data)
+library(corrplot)
+par(mfrow=c(1,3))
+workclass_income<-chisq.test(table(droplevels(workclass), 
+      income_group))
+corrplot(workclass_income$residuals, is.cor=FALSE) 
+occupation_income<-chisq.test(table(droplevels(occupation), 
+      income_group))
+corrplot(occupation_income$residuals, is.cor=FALSE) 
+education_income<-chisq.test(table(education, 
+      income_group))
+corrplot(education_income$residuals, is.cor=FALSE)
+race_income<-chisq.test(table(race, 
+      income_group))
+corrplot(race_income$residuals, is.cor=FALSE)
+sex_income<-chisq.test(table(sex, 
+      income_group))
+corrplot(sex_income$residuals, is.cor=FALSE)
+marital_income<-chisq.test(table(marital_status, 
+      income_group))
+corrplot(marital_income$residuals, is.cor=FALSE)
+
+cor(age, education_num)
+cor(age,hours_per_week)
+cor(education_num, hours_per_week)
+par(mfrow=c(1,1))
 ```
 
 ```{r}
