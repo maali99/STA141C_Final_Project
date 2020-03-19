@@ -1,23 +1,23 @@
 # STA141C_Final_Project
 
-OUTLINE:
+# OUTLINE:
 
-Introduction 
+# Introduction 
 -Goal 
 -Source of data
 -Questions 
 -Methodology
 -Variables 
 
-Exploratory Data Analysis
+# Exploratory Data Analysis
 -Visualizations 
 -Reason for Dropping variables 
 -Final selection 
 
-Bootstrap 
+# Bootstrap 
 -estimate se
 -chart of estimates
 
-Analysis
+# Analysis
 - logistic regression
 - analysis of odds
