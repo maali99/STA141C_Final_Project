@@ -2,24 +2,104 @@
 title: "141C Project"
 output: html_document
 ---
-## Introduction
-We decided to run logistic regression on our dataset. Model selection was dictated by bootstrapping the data and averaging out the resulting p-values of each model to decide which variables were most significant in order to retain them for the best model. 
+## Introduction and model selection
+
+We decided to run logistic regression on our dataset. Model selection was dictated by bootstrapping the data and averaging out the resulting p-values of each model to decide which variables were most significant in order to retain them for the best model.
 
 
 ```{r}
-data <- read.table("adult.data")
+library(tidyverse)
+library(purrr)
+library(parallel)
 
-# null logistic model
-nullModel = glm(data$V15 ~ 1, family = binomial(), data = data)
+data <- read.csv("adult.data", header = FALSE)
 
-#best logistic model derived from bootstrapping data
-model = glm(data$V15)
+
+colnames(data) <- c("Age", "Workclass", "fnlwgt", "Education", "Education_num", "Marital", "Occupation", "Relationship", "Race", "Sex", "Capital_gain", "Capital_loss", "Hours_week", "Country", "Income")
+
+# The full and null models for comparison
+full_model = glm(Income ~ ., family = binomial(), data = data)
+null_model = glm(Income ~ 1, family = binomial(), data = data)
+
+# Our chosen logistic regression model
+model <- glm(Income ~ Age + Race + Sex + Education_num + Hours_week, family = binomial, data = data)
+
+summary(model)
 
 ```
 
 ## Analysis of odds
-According to the model, 
+
 ```{r}
+# beta coefficients and standard error assignments
+b0 <- model$coefficients[1]
+
+b1 <- model$coefficients[2]
+SE_b1 <- summary(model)$coefficients[2,2]
+
+b2 <- model$coefficients[3]
+SE_b2 <- summary(model)$coefficients[3,2]
+
+b3 <- model$coefficients[4]
+SE_b3 <- summary(model)$coefficients[4,2]
+
+b4 <- model$coefficients[5]
+SE_b4 <- summary(model)$coefficients[5,2]
+
+b5 <- model$coefficients[6]
+SE_b5 <- summary(model)$coefficients[6,2]
+
+b6 <- model$coefficients[7]
+SE_b6 <- summary(model)$coefficients[7,2]
+
+b7 <- model$coefficients[8]
+SE_b7 <- summary(model)$coefficients[8,2]
+
+b8 <- model$coefficients[9]
+SE_b8 <- summary(model)$coefficients[9,2]
+
+test_stat1 <- (b1-0)/SE_b1
+test_stat2 <- (b2-0)/SE_b2
+test_stat3 <- (b3-0)/SE_b3
+test_stat4 <- (b4-0)/SE_b4
+test_stat5 <- (b5-0)/SE_b5
+test_stat6 <- (b6-0)/SE_b6
+test_stat7 <- (b7-0)/SE_b7
+test_stat8 <- (b8-0)/SE_b8
+
+# p-values for each predictor variables
+2*(1-pnorm(abs(test_stat1)))
+2*(1-pnorm(abs(test_stat2)))
+2*(1-pnorm(abs(test_stat3)))
+2*(1-pnorm(abs(test_stat4)))
+2*(1-pnorm(abs(test_stat5)))
+2*(1-pnorm(abs(test_stat6)))
+2*(1-pnorm(abs(test_stat7)))
+2*(1-pnorm(abs(test_stat8)))
+
+
+```
+
+
+```{r}
+# odds of income >=50k with all refernce variables active and others held constant
+exp(b0)
+# odds of income >=50k given age
+exp(b1)
+# odds of income >=50k for asian-pacific islander holding all others constant
+exp(b2)
+# odds of income >=50k for black holding all others constant
+exp(b3)
+# odds of income >=50k for other holding all others constant
+exp(b4)
+# odds of income >=50k for white holding all others constant
+exp(b5)
+# odds of income >=50k for male holding all others constant
+exp(b6)
+# odds of income >=50k for education number holding all others constant
+exp(b7)
+# odds of income >=50k for hours worked per week holding all others constant
+exp(b8)
 
 ```
 
