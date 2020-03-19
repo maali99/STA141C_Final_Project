@@ -3,21 +3,21 @@
 # OUTLINE:
 
 # Introduction 
--Goal 
--Source of data
--Questions 
--Methodology
--Variables 
+- Goal 
+- Source of data
+- Questions 
+- Methodology
+- Variables 
 
 # Exploratory Data Analysis
--Visualizations 
--Reason for Dropping variables 
--Final selection 
+- Visualizations 
+- Reason for Dropping variables 
+- Final selection 
 
 # Bootstrap 
--estimate se
--chart of estimates
+- Estimate se
+- Chart of estimates
 
 # Analysis
-- logistic regression
-- analysis of odds
+- Logistic regression
+- Analysis of odds
