@@ -44,7 +44,6 @@ Logistic Regression (Without Bootstrapping)
 ```{r}
 fullmodel <- glm(income ~., family = binomial, data = data1)
 summary(fullmodel)
-
 ```
 
 ```{r}
@@ -66,7 +65,7 @@ suppressMessages(library(tidyverse))
 library(furrr)
 
 plan(multiprocess, workers = 4)
-B = 10000
+B = 100
 n = nrow(data1)
 
 m <- 10
@@ -233,7 +232,7 @@ predict_blb_glm <-function(method, test_data){
     }
     
     
-    accuracy_vector<- c(incorrect_50plus, correct_50plus, incorrect_50less, correct_50less)
+    accuracy_vector<- c( correct_50plus, incorrect_50plus, correct_50less, incorrect_50less)
     
   }
   
@@ -243,15 +242,22 @@ predict_blb_glm <-function(method, test_data){
 
 ```{r}
 #use mean1 to calculate an accuracy vector on the test data
-predict_blb_glm(mean1, data1_test)
+accuracy_mean<- predict_blb_glm(mean1, data1_test)
+
+mean_rate<- (accuracy_mean[1]+accuracy_mean[3])/(nrow(data1_test))*100
 
 #use med1 to calculate an accuracy vector on the test data
-predict_blb_glm(med1, data1_test)
+accuracy_median<- predict_blb_glm(med1, data1_test)
+
+median_rate<- (accuracy_median[1]+accuracy_median[3])/(nrow(data1_test))*100
 
 #use the confidence interval to calculate an accuracy vector on the test data
-predict_blb_glm(ci1[1,],data1_test) #this calculates for the lower bound
+accuracy_ci1<- predict_blb_glm(ci1[1,],data1_test) #this calculates for the lower bound
+accuracy_ci2<- predict_blb_glm(ci1[2,],data1_test) #this calculates for the upper bound
 
-predict_blb_glm(ci1[2,],data1_test) #this calculates for the upper bound
+ci1_rate<- (accuracy_ci1[1]+accuracy_ci1[3])/(nrow(data1_test))*100
+
+ci2_rate<- (accuracy_ci2[1]+accuracy_ci2[3])/(nrow(data1_test))*100
 ```
 
 After using calculating the accuracy rates, we can conclude that teh Logistic Regression Model is not a good choice for this data, so we switched over to using Random Forest because of how categorical our data is. 
@@ -270,34 +276,103 @@ tree_income <- tree(income ~
                       occupation+
                       relationship+
                       race+
+                      capital_gain +
+                      capital_loss+
                       hours_per_week+
-                      sex
-                      , data1)
+                      sex, data1)
 
 plot(tree_income, type = "uniform")
 text(tree_income, pretty = 1, all = TRUE, cex = 0.7)
+
+rfPredict_income<-as.data.frame(predict(tree_income, data1_test))
+
+incorrect_50plus2=0 #counter for number of incorrect classifications of incomes greater than 50k
+correct_50plus2=0 #counter for number of correct classifications of incomes greater than 50k
+incorrect_50less2=0 #counter for number of incorrect classifications of incomes less than 50k
+correct_50less2=0 
+
+calc_accuracy_rf<-function(test_data, predicted){
+
+  for(i in seq_len(nrow(predicted))){ #if the probability is higher for >50K then it means that predicted income is >50K
+    if(predicted[i,1]<predicted[i,2]){
+      
+      pred_income = " >50K"
+    #if the predicted income is equal to the actual income at that level then increment correct
+      if(pred_income == as.character(droplevels(test_data[i,]$income))){
+        correct_50plus2= correct_50plus2 +1
+      }
+      else{
+    #otherwise increment incorrect
+        incorrect_50plus2 = incorrect_50plus2 + 1
+      }
+    }else{ #if the probability is less for >50k then it means the predicted is <=50K
+      
+      pred_income = " <=50K"
+    #if the predicted is equal to the actual value of test data at that row 
+      if(pred_income == as.character(droplevels(test_data[i,]$income))){
+    #then increment the correct counter
+        correct_50less2= correct_50less2+1
+      }else{
+    #otherwise increment incorrect
+        incorrect_50less2 = incorrect_50less2 +1
+      }
+    }
+  }
+  return(c(correct_50plus2, incorrect_50plus2, correct_50less2, incorrect_50less2))
+}
+
+
+accuracy_val<-calc_accuracy_rf(data1_test,rfPredict_income)
+
+(accuracy_val[1]+accuracy_val[3])/(nrow(data1_test))*100
 ```
 
-Now we wil use this function to create a Bag of Little Random Forests. 
+After running the tree function to create a classification and regression tree, we predicted an accuracy rate to see how accurately the tree classifies the test data. Without running bootstrap, it's evident that the accuracy rate is significantly higer than the logistic regression. Now we wil use this function to create a Bag of Little Random Forests. 
 ```{r}
+#use the library furrr
 suppressMessages(library(tidyverse))
 library(furrr)
 
 plan(multiprocess, workers = 4)
 
-B <- 10
+#set B to 1000
+B <- 1000
+#we will be sampling 8 columns for our resampling 
 m <- 8
+#set n to the number of rows in the training set aka data1
 n <- nrow(data1)
 
+#note we are only using the column names below to resample as some of the variables have been dropped
 col_names <- c("age","workclass","education","marital_status","occupation","relationship","race","sex", "capital_gain","capital_loss","hours_per_week") 
 
-map_dfr(seq_len(B), function(i) {
-  col_names <- c("income", sample(col_names, m))
+#we want to predict a class for each row of data in the test data aka dat1_test
+#to do this we will have to implement transpose and subsetting later on
+#GOAL: we basically want to output a transposed data frame of B rows for each row number in the test data
+#WHY: having the row numbers of the test numbers as column names will allow us to easily get average probabilities for >50K and <=50K, then from there we can pass our newly estimated probabilities from bootstrapping to get an accuracy rate for bootstrap_rf
+bootstrap_rf<-map_dfr(seq_len(B), function(i) {
+  col_names <- c("income", sample(col_names, m)) #selects the col
   income_boot <- data1[sample(n, n, replace = TRUE), col_names]
   tree_income_boot <- tree(income ~ ., income_boot)
-  predict(tree_income_boot, data1_test)
+  predict_tree<-predict(tree_income_boot, data1_test)
+  as.data.frame(t(predict_tree))
 })
-probability_rf
+
+#the formatting of the transpose makes all even indices as probabilities for being in class >50k and all odd indices as probabilities for being in class <=50K
+even_indexes<-seq(2,nrow(bootstrap_rf),2) #indices associated with the >50k 
+odd_indexes<-seq(1,nrow(bootstrap_rf),2) #indices associated with the<=50k
+
+#we want to extract all the odd and even rows into two separate data frames
+more_than50K_estimate<-as.data.frame(map_dbl(bootstrap_rf[even_indexes,], mean))
+less_than50K_estimate<-as.data.frame(map_dbl(bootstrap_rf[odd_indexes,], mean))
+
+#we then want to bind the two to create a final data frame that predicts classes for the test data and was acquired from bootstrapping
+mean_bootstrap_rf<-cbind(less_than50K_estimate, more_than50K_estimate)
+
+#finally pass this newly created data frame into the accuracy calculator that compares predictions to actual
+accuracy_val2<-calc_accuracy_rf(data1_test,prediction_rf)
+
+#then we will get an accuracy rate 
+(accuracy_val2[1]+accuracy_val2[3])/(nrow(data1_test))*100
 ```
 
 

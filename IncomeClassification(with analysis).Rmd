@@ -1,28 +1,38 @@
 ---
-title: "STA 141C Final Project"
-author: "Sukhween Bhullar"
+title: "STA 141C Final Project (Winter 2020)"
+author: "Eva Chen, Muhammad Ali, Yaosang Zhan, Sukhween Bhullar"
 date: "3/19/2020"
 output: html_document
 ---
 ```{r include=FALSE}
 knitr::opts_chunk$set(echo=FALSE)
 ```
+
+```{r get-labels, echo = FALSE}
+labs = knitr::all_labels()
+labs = setdiff(labs, c("setup", "get-labels"))
+```
+
+```{r all-code, ref.label=labs, eval=FALSE}
+```
+
 ### **Introduction**  
 **Goal:**   
-The goal of the following project is to analyze the Census dataset named “adult.data” to classify the income group, >50K (greater   than $50,000) or <=50K (less than $50,000), of a specific individual. This data will be split into two parts, training and   testing. We intend to implement bootstrapping with the generalized logistic model and random forest on the training data set in   hopes to predict the income groups of our test dataset.   
+The goal of the following project is to analyze the Census dataset named “adult.data” to classify the income group, >50K (greater   than $50,000) or <=50K (less than $50,000), of a specific individual. This data will be split into two parts, training and   testing. We intend to implement bag of little bootstraps with the generalized logistic model on the training data set in   hopes to predict the income groups of our test dataset. Based on our dataset we want to implement bag of little bootstraps because then we do not have to worry about the underlying assumptions of distributions. Since the distribution of our dataset is unknown we can turn to bootstrapping to calculate estimates. 
 
 **Source of Data:**  
 The data was acquired from the UC Irvine Machine Learning Repository <https://archive.ics.uci.edu/ml/datasets/Adult>. The data was   extracted from the 1994 Census database. It consists of 15 attributes of which 1 is the response variable income (>50K and <=50K).   
 
 **Questions:**  
-+Which model has the better accuracy rate after implementing bootstrap, Logistic Regression or Random Forest?  
-+What is the predicted class of an individual given their demographics?  
++Does the model accuracy rate change after implementing BLB on the Logistic Regression?  
++What is the predicted class of an individual given their demographics?
++Amongst the different BLB Logistic Regression estimation methods we used, which one is the "best"?
 
 **Variables:**    
 
 * income (Categorical):   
     + Levels: >50K, <=50K 
-    + Ex. If someone falls in the >50K group they earn more than $50,000. If someone falls in the <=50K group thy earn less than $50,000 
+    + Ex. If someone falls in the >50K group they earn more than 
 * age (continuous):
     + Integer value greater than 0
     + Minimum: 17, Maximum: 90 
@@ -177,6 +187,8 @@ As you can see, we used logistic regression without bootstrapping and included a
 fullmodel <- glm(income ~., family = binomial, data = data1)
 paste("The number of rows in the full logistic model:", nrow(summary(fullmodel)$coef))
 
+coeffs_full <- fullmodel$coefficients
+
 predicted_full<-predict(fullmodel, data1_test, type="response")
 
 #here we implemented the library caret and the predict functionto predict the classes
@@ -212,7 +224,7 @@ predicted_m1<-predict(model1, data1_test, type="response")
 #we then extracted the accuracy rate from the confusion matrix 
 library(caret)
 
-predict_df_m1<-as.data.frame(predicted)
+predict_df_m1<-as.data.frame(predicted_m1)
 
 for(i in seq_len(nrow(data1_test))){
   if(predict_df_m1$predicted[i]>.5){
@@ -305,10 +317,10 @@ mean_coeffs<-mean_coeffs %>%
 formattable(mean_coeffs)
 ```
 
-**Random Forest**  
-After understanding that the Logistic Regression Model was not the best fit for our data we resorted to implementing another model, the classification/regression tree. Because this model can be used for both categorical and quantitative variables, in the form of a classification tree and a regression tree respectively, it would work perfectly with the kind of data we’re using. To begin, we ran the full model, but we sadly ran into an error saying that we could not have variables with more than 32 levels. This led us to drop the variable “native_country” as it had the most levels. We also chose to drop “fnlwgt” because this variable is just an estimation for weights used by the Census and was not applicable to our model. Finally, we removed “education” because we already had a variable called “education_num” that was associated with the education level of an individual, keeping both would’ve been redundant. The next step was to create multiple trees.  
+**Next Steps: Classification Trees and Random Forest**  
+After understanding that the Logistic Regression Model may not the best fit for our data we understood that we might need to implement another model, the classification/regression tree. Because this model can be used for both categorical and quantitative variables, in the form of a classification tree and a regression tree respectively, it would work perfectly with the kind of data we’re using. To at least see a general trend, we ran the full model, but we sadly ran into an error saying that we could not have variables with more than 32 levels. This led us to drop the variable “native_country” as it had the most levels. We also chose to drop “fnlwgt” because this variable is just an estimation for weights used by the Census and was not applicable to our model. Finally, we removed “education” because we already had a variable called “education_num” that was associated with the education level of an individual, keeping both would’ve been redundant. The next step was to create multiple trees, so we applied a bootstrap method to randomly select columns to create multiple trees, in other words a Random Forest.  
 
-The following is the initial tree classification model used on age, workclass, education, marital_status, occupation, relationship, race, capital_gain, capital_loss, hours_per_week and sex. The next step was to create multiple trees, to create a random forest and also apply bootstrap to it. 
+The following is the initial tree classification model used on age, workclass, education, marital_status, occupation, relationship, race, capital_gain, capital_loss, hours_per_week and sex. The next step was to create multiple trees, to create a random forest. 
 ```{r, warning=FALSE, message=FALSE}
 #implement the tree function to 
 library(tree)
@@ -330,26 +342,124 @@ tree_income <- tree(income ~
 
 plot(tree_income, type = "uniform")
 text(tree_income, pretty = 1, all = TRUE, cex = 0.7)
+
+#Random Forest
+
+#use the library furrr
+suppressMessages(library(tidyverse))
+library(furrr)
+plan(multiprocess, workers = 4)
+#set B to 1000
+B <- 10
+#we will be sampling 8 columns for our resampling 
+m <- 8
+#set n to the number of rows in the training set aka data1
+n <- nrow(data1)
+#note we are only using the column names below to resample as some of the variables have been dropped
+col_names <- c("age","workclass","education","marital_status","occupation","relationship","race","sex", "capital_gain","capital_loss","hours_per_week") 
+#we want to predict a class for each row of data in the test data aka dat1_test
+#to do this we will have to implement transpose and subsetting later on
+#GOAL: we basically want to output a transposed data frame of B rows for each row number in the test data
+#WHY: having the row numbers of the test numbers as column names will allow us to easily get average probabilities for >50K and <=50K, then from there we can pass our newly estimated probabilities from bootstrapping to get an accuracy rate for bootstrap_rf
+predict_vals<-NULL
+random_forest<-future_map_dfr(seq_len(B), function(i) {
+  col_names <- c("income", sample(col_names, m)) #selects the col
+  income_boot <- data1[sample(n, n, replace = TRUE), col_names]
+  tree_income_boot <- tree(income ~ ., income_boot)
+  predict_tree<-predict(tree_income_boot, data1_test)
+  as.data.frame(t(predict_tree))
+
+})
+
+#the formatting of the transpose makes all even indices as probabilities for being in class >50k and all odd indices as probabilities for being in class <=50K
+even_indexes<-seq(2,nrow(random_forest),2) #indices associated with the >50k 
+odd_indexes<-seq(1,nrow(random_forest),2) #indices associated with the<=50k
+#we want to extract all the odd and even rows into two separate data frames
+more_than50K_estimate<-as.data.frame(map_dbl(random_forest[even_indexes,], mean))
+less_than50K_estimate<-as.data.frame(map_dbl(random_forest[odd_indexes,], mean))
+#we then want to bind the two to create a final data frame that predicts classes for the test data and was acquired from bootstrapping
+mean_rf<-cbind(less_than50K_estimate, more_than50K_estimate)
 ```
 
-**Bootstrap (with Random Forest)**  
-To create our Bag of Little Random Forest we had to use bootstrap and then implement a random forest model. The approach was to resample from each one of the 10 subsamples 1000 times. Then we want to sample eight columns from our final list of eleven columns consisting of age, workclass, education, marital_status, occupation, relationship, race, capital_gain, capital_loss, hours_per_week and sex. In every iteration, we were creating our prediction tree off of our training data and then actually predicting the classification probabilities with our testing data. In the end we wanted to create 1000 different classification probabilities for our testing data, resulting in approximately 6,000,000 rows of data to process for 10 different bootstrapped datasets. To visualize, one can imagine one iteration of a test data set consisting of 6000 rows, and we create 1000 different probabilities to classify if each of the rows is in the >50K or <=50K income bracket. After getting our 1000 estimates for each row, we want to calculate the mean probabilities of that row being classified as >50K and <=50K. Then we simply compare which probability is higher and categorize for each row. Finally, we create a mean prediction value for each one of the subsets, so now we go from ~6,000,000 predictions for 10 subsets to ~6,000 mean predictions for 10 subsets, then we want to create 1 final prediction set consisting of ~6,000 rows. The final dataset will be benchmarked for accuracy against the actual test data values. 
+**Next Steps: Bag of Little Random Forests**  
+Unfortunately with the time restrictions we only had enough time to create one BLB model, and were not able to create the Bag of Little Random Forests, but to further our knowledge we wanted to at least attempt the code.  
+To create our Bag of Little Random Forest we would use bootstrap and then implement a random forest model. The approach was to resample from each one of the 10 subsamples 1000 times. Then we want to sample eight columns from our final list of eleven columns consisting of age, workclass, education, marital_status, occupation, relationship, race, capital_gain, capital_loss, hours_per_week and sex. In every iteration, we were creating our prediction tree off of our training data and then actually predicting the classification probabilities with our testing data. In the end we wanted to create 1000 different classification probabilities for our testing data, resulting in approximately 6,000,000 rows of data to process for 10 different bootstrapped datasets. To visualize, one can imagine one iteration of a test data set consisting of ~6000 rows, and we create 1000 different probabilities. After getting our 1000 probabilities for each row, we want to calculate the mean probabilities of that row being classified as >50K and <=50K. Then we simply compare which probability is higher and classify each row. This would create a mean prediction value for each one of the subsets, so now we go from ~6,000,000 predictions for 10 subsets to ~6,000 mean predictions for 10 subsets, then we want to create 1 final prediction set consisting of ~6,000 rows. The final dataset will be benchmarked for accuracy against the actual test data values. 
 
-```{r}
-#in progress 
+```{r, eval=FALSE, warning=FALSE, message=FALSE}
+#use the library furrr
+suppressMessages(library(tidyverse))
+library(furrr)
+
+plan(multiprocess, workers = 4)
+
+#set B to 1000
+B <- 2
+p<- 10 # the number of subsamples
+#we will be sampling 8 columns for our resampling 
+m <- 8
+#set n to the number of rows in the training set aka data1
+n <- nrow(data1)
+
+#note we are only using the column names below to resample as some of the variables have been dropped
+col_sample <- c("age","workclass","education","marital_status","occupation","relationship","race","sex", "capital_gain","capital_loss","hours_per_week") 
+
+#we want to predict a class for each row of data in the test data aka dat1_test
+#to do this we will have to implement transpose and subsetting later on
+#GOAL: we basically want to output a transposed data frame of B rows for each row number in the test data
+#WHY: having the row numbers of the test numbers as column names will allow us to easily get average probabilities for >50K and <=50K, then from there we can pass our newly estimated probabilities from bootstrapping to get an accuracy rate for bootstrap_rf
+bootstrap_rf<-function(i, ind_part){
+   #selects the col
+  print("hey")
+  col_names <- c("income", sample(col_sample, m)) #selects the col
+  subsample = read_csv(str_c("part",4, ".csv"))
+  income_boot <- subsample[sample(seq.int(subsample), n, replace = TRUE), col_names]
+  #convert variables to factors
+  income_boot <- mutate_if(income_boot, is.character, as.factor)
+
+  tree_income_boot <- tree(income ~ ., income_boot)
+  predict_tree<-predict(tree_income_boot, data1_test)
+  as.data.frame(t(predict_tree))
+}
+
+future_map(seq_len(p), ~{
+  map_dfr(seq_len(B), bootstrap_rf, ind_part=.)} )
+
+#the formatting of the transpose makes all even indices as probabilities for being in class >50k and all odd indices as probabilities for being in class <=50K
+even_indexes<-seq(2,nrow(as.data.frame(t(predict_tree))),2) #indices associated with the >50k 
+odd_indexes<-seq(1,nrow(as.data.frame(t(predict_tree))),2) #indices associated with the<=50k
+
+#we want to extract all the odd and even rows into two separate data frames
+more_than50K_estimate<-as.data.frame(map_dbl(as.data.frame(t(predict_tree))[even_indexes,], mean))
+less_than50K_estimate<-as.data.frame(map_dbl(as.data.frame(t(predict_tree))[odd_indexes,], mean))
+
+#extra step needed here to construct an aesthetic data frame of the data 
+
+#we then want to bind the two to create a final data frame that predicts classes for the test data and was acquired from bootstrapping
+mean_bootstrap_rf<-cbind(less_than50K_estimate, more_than50K_estimate)
+
+#finally pass this newly created data frame into the accuracy calculator that compares predictions to actual
+
+accuracy_val2<-calc_accuracy_rf(data1_test,prediction_rf)
+
+#then we will get an accuracy rate 
+(accuracy_val2[1]+accuracy_val2[3])/(nrow(data1_test))*100
 ```
 
 **Customized Prediction Accuracy Calculator**  
-Our team wanted to calculate how accurate our models were, but this proved to be difficult because we were trying to implement bootstrapping throughout this project. In the case in which we don’t use bootstrapping and simply use the glm or tree function once without repetition, we could easily use the confusionMatrix function to get the accuracy of our results by testing the respective models on our testing data. With bootstrapping, we would need to create a method that deals with the complexity of our data structure that have gone through transformations. Through a series of simple if else statements we were able to create two functions, one for bootstrapping with the logistic regression model and another for bootstrapping with classification/regression trees. This allowed us to calculate the accuracy of our models. 
+Our team wanted to calculate how accurate our models were, but this proved to be difficult because we were trying to implement bootstrapping throughout this project. In the case in which we don’t use bootstrapping and simply use the glm or tree function once without repetition, we could easily use the confusionMatrix function to get the accuracy of our results by testing the respective models on our testing data. With bootstrapping, we would need to create a method that deals with the complexity of our data structure that have gone through transformations. Through a series of simple if else statements we were able to create a function for bootstrapping with the logistic regression model. A similar function to calculate the Random Forest accuracy was created. This allowed us to calculate the accuracy of our models. 
 
-The following is an accuracy caculator for Bag of Little Bootstraps for Logistic Regression. It returns a vector of the number of:  
+An accuracy caculator returns a vector of the number of:  
 
 + incorrect values categorized as >50K
 + correct values categorized as >50K
 + incorrect values categorized as <=50K
 + correct values categorized as <=50K
 
-```{r}
+We then use these numbers to calculate the accuracy rate, which is the correct/total. 
+```{r, warning=FALSE, message=FALSE}
+
+#accuray calculator for BLB with logistic regression
+
 #initialize counters
 incorrect_50plus=0 #counter for number of incorrect classifications of incomes greater than 50k
 correct_50plus=0 #counter for number of correct classifications of incomes greater than 50k
@@ -476,8 +586,16 @@ predict_blb_glm <-function(method, test_data){
 }
 ```
 
-After implementing the accuracy calculator we got the following accuracy rates (in %) for the mean, median, and confidence intervals for the Bag of Little Bootstraps with the General Logistic Regression Model. 
-```{r}
+### **Analysis and Improvements**  
+For our final results, we got the coefficients from the Logistic Regression (these coefficients include implementations with and without Bag of Little Bootstraps). The results have been formatted as a table in the following order: Simple Logistic Regression without Bootstrap, then BLBGLM with Mean, BLBGLM with Median, BLBGLM with Confidence Intervals.  
+```{r, warning=FALSE, message=FALSE}
+coeffs_df<-as.data.frame(cbind(coeffs_simple, mean_coeffs, med_coeffs, ci_coeffs))
+coeffs_df <- coeffs_df %>% 
+  rename(Coefficients_Simple=coeffs_simple)
+formattable(coeffs_df)
+```
+After implementing the accuracy calculator we created a table of accuracy rates (in %) for the mean, median, and confidence intervals for the Bag of Little Bootstraps with the General Logistic Regression Model and joined it with the accuracy rates for the simpler models that don't use Bag of Little Bootstraps. The table input for accuracy is based on the following models: GLM on the full model, GLM without bootstrap (selected), then BLBGLM with mean, BLBGLM with median, BLBGLM with confidence intervals.  
+```{r, warning=FALSE, message=FALSE}
 library(formattable)
 #use mean1 to calculate an accuracy vector on the test data
 accuracy_mean<- predict_blb_glm(mean1, data1_test)
@@ -497,16 +615,28 @@ ci1_rate<- (accuracy_ci1[1]+accuracy_ci1[3])/(nrow(data1_test))*100
 
 ci2_rate<- (accuracy_ci2[1]+accuracy_ci2[3])/(nrow(data1_test))*100
 
-accuracy_rates<-as.data.frame(t(c(glm_rate_full, mean_rate, median_rate, ci1_rate, ci2_rate, glm_rate_m1))) %>% 
+accuracy_tree<- calc_accuracy_rf(data1_test,predict(tree_income, data1_test))
+tree_rate <- (accuracy_tree[1]+accuracy_tree[3])/(nrow(data1_test))*100
+
+accuracy_val2<-calc_accuracy_rf(data1_test,prediction_rf)
+#then we will get an accuracy rate 
+rf_rate<-(accuracy_val2[1]+accuracy_val2[3])/(nrow(data1_test))*100
+
+accuracy_rates<-as.data.frame(t(c(glm_rate_full, mean_rate, median_rate, ci1_rate, ci2_rate, glm_rate_m1, tree_rate, rf_rate))) %>% 
   rename("GLM (full, no bootstrap)"=V1,
          "Model 1, no bootsrap"=V2,
           "Mean Rate"=V3, 
          "Median Rate"=V4, 
          "CI Rate (Lower)"=V5,
-         "CI Rate (Upper)"=V6)
+         "CI Rate (Upper)"=V6,
+         "Tree Rate" = V7,
+         "Random Forest Rate"= V8)
 
 formattable(accuracy_rates)
 ```
+From the above table it is evident that the most accurate model is the General Logistic Regression model that did not use any bootstrapping as it had the highest accuracy rate at 84.58%. On the contrary the GLM we used regressing against the variables that would eventually be used in the BLB are has a lower accuracy rate at 75.96%. We would expect this because the first model uses all the variables, implying that the smaller model may have dropped some significant variables. Given the circumstances of our approach, we had to drop some variables to make this BLBGLM possible, even though a BLBGLM using all variables would be amazing it is not practical in the sense that it creates 96 different estimates. So to move forward we applied our BLBGLM to this logistic model that had less variables. Thankfully, the numbers showed that BLBGLM was effective since the accuracy rates went up for all estimation methods, minus the median estimates. The best results were acquired by using the confidence intervals, in which we acquired much better results.     
 
-### **Analysis and Improvements**
+As stated before, we were not able to create a Bag of Little Random Forests because of the time crunch, but based on our accuracy rates for the simple classification tree and the Random Forest, we would expect to get even better results with the Bag of Little Random Forests. When compared to the BLBGLM we get better results from Random Forest. This implies that there might be more power to the Random Forest approach given that the accuracy is higher even though the sampling was lower for Random Forest. For the future, we now know that in the case of data with a lot of categorical variables and levels Bag of Little Random Forests would be an effective approach.   
 
+Fr now we can conclude that the best method to reduce our estimates, in terms of the Bag of Little Boostraps with Logistic Regression, is the confidence interval approach. This brings our final model to the following:  
+Income_LB = 
