@@ -9,7 +9,7 @@ knitr::opts_chunk$set(echo=FALSE)
 ```
 ### **Introduction**  
 **Goal:**   
-The goal of the following project is to analyze the Census dataset named “adult.data” to classify the income group, >50K (greater   than $50,000) or <=50K (less than $50,000), of a specific individual. This data will be split into two parts, training and   testing. We intend to implement bag of little bootstraps with the generalized logistic model on the training data set in   hopes to predict the income groups of our test dataset. Based on our dataset we want to implement bag of little bootstraps because then we do not have to worry about the underlying assumptions of distributions. Since the distribution of our dataset is unknown we can turn to bootstrapping to calculate estimates. 
+The goal of the following project is to analyze the Census dataset named “adult.data” to classify the income group, >50K (greater   than $50,000) or <=50K (less than $50,000), of a specific individual. This data will be split into two parts, training and   testing. We intend to implement Bag of Little Bootstraps with the Generalized Logistic Model on the training data in hopes to predict the income groups of our test data. Based on our dataset we want to implement bag of little bootstraps because then we do not have to worry about the underlying assumptions of distributions. Since the distribution of our dataset is unknown we can turn to bootstrapping to calculate estimates. By using bag of little bootstraps we can split our data to decrease the computation time and make our code more efficient. 
 
 **Source of Data:**  
 The data was acquired from the UC Irvine Machine Learning Repository <https://archive.ics.uci.edu/ml/datasets/Adult>. The data was   extracted from the 1994 Census database. It consists of 15 attributes of which 1 is the response variable income (>50K and <=50K).   
@@ -378,62 +378,86 @@ To create our Bag of Little Random Forest we would use bootstrap and then implem
 
 ```{r, eval=FALSE, warning=FALSE, message=FALSE}
 #use the library furrr
-suppressMessages(library(tidyverse))
-library(furrr)
 
-plan(multiprocess, workers = 4)
+# CODE
+# suppressMessages(library(tidyverse))
+# library(furrr)
 
+# plan(multiprocess, workers = 4)
+
+# CODE
 #set B to 1000
-B <- 2
-p<- 10 # the number of subsamples
+# B <- 2
+
+# CODE
+# p<- 10 # the number of subsamples
+
 #we will be sampling 8 columns for our resampling 
-m <- 8
+
+# CODE
+# m <- 8
 #set n to the number of rows in the training set aka data1
-n <- nrow(data1)
+
+# CODE
+# n <- nrow(data1)
 
 #note we are only using the column names below to resample as some of the variables have been dropped
-col_sample <- c("age","workclass","education","marital_status","occupation","relationship","race","sex", "capital_gain","capital_loss","hours_per_week") 
+
+# CODE
+# col_sample <- c("age","workclass","education","marital_status","occupation","relationship","race","sex", "capital_gain","capital_loss","hours_per_week") 
 
 #we want to predict a class for each row of data in the test data aka dat1_test
 #to do this we will have to implement transpose and subsetting later on
 #GOAL: we basically want to output a transposed data frame of B rows for each row number in the test data
 #WHY: having the row numbers of the test numbers as column names will allow us to easily get average probabilities for >50K and <=50K, then from there we can pass our newly estimated probabilities from bootstrapping to get an accuracy rate for bootstrap_rf
-bootstrap_rf<-function(i, ind_part){
-   #selects the col
-  print("hey")
-  col_names <- c("income", sample(col_sample, m)) #selects the col
-  subsample = read_csv(str_c("part",4, ".csv"))
-  income_boot <- subsample[sample(seq.int(subsample), n, replace = TRUE), col_names]
-  #convert variables to factors
-  income_boot <- mutate_if(income_boot, is.character, as.factor)
 
-  tree_income_boot <- tree(income ~ ., income_boot)
-  predict_tree<-predict(tree_income_boot, data1_test)
-  as.data.frame(t(predict_tree))
-}
+# CODE
+# bootstrap_rf<-function(i, ind_part){
+#    #selects the col
+#   print("hey")
+#   col_names <- c("income", sample(col_sample, m)) #selects the col
+#   subsample = read_csv(str_c("part",4, ".csv"))
+#   income_boot <- subsample[sample(seq.int(subsample), n, replace = TRUE), col_names]
+#   #convert variables to factors
+#   income_boot <- mutate_if(income_boot, is.character, as.factor)
+# 
+#   tree_income_boot <- tree(income ~ ., income_boot)
+#   predict_tree<-predict(tree_income_boot, data1_test)
+#   as.data.frame(t(predict_tree))
+# }
 
-future_map(seq_len(p), ~{
-  map_dfr(seq_len(B), bootstrap_rf, ind_part=.)} )
+# CODE
+# future_map(seq_len(p), ~{
+#   map_dfr(seq_len(B), bootstrap_rf, ind_part=.)} )
 
 #the formatting of the transpose makes all even indices as probabilities for being in class >50k and all odd indices as probabilities for being in class <=50K
-even_indexes<-seq(2,nrow(as.data.frame(t(predict_tree))),2) #indices associated with the >50k 
-odd_indexes<-seq(1,nrow(as.data.frame(t(predict_tree))),2) #indices associated with the<=50k
+
+# CODE
+# even_indexes<-seq(2,nrow(as.data.frame(t(predict_tree))),2) #indices associated with the >50k
+# odd_indexes<-seq(1,nrow(as.data.frame(t(predict_tree))),2) #indices associated with the<=50k
 
 #we want to extract all the odd and even rows into two separate data frames
-more_than50K_estimate<-as.data.frame(map_dbl(as.data.frame(t(predict_tree))[even_indexes,], mean))
-less_than50K_estimate<-as.data.frame(map_dbl(as.data.frame(t(predict_tree))[odd_indexes,], mean))
+
+# CODE
+# more_than50K_estimate<-as.data.frame(map_dbl(as.data.frame(t(predict_tree))[even_indexes,], mean))
+# less_than50K_estimate<-as.data.frame(map_dbl(as.data.frame(t(predict_tree))[odd_indexes,], mean))
 
 #extra step needed here to construct an aesthetic data frame of the data 
 
 #we then want to bind the two to create a final data frame that predicts classes for the test data and was acquired from bootstrapping
-mean_bootstrap_rf<-cbind(less_than50K_estimate, more_than50K_estimate)
+
+# CODE
+# mean_bootstrap_rf<-cbind(less_than50K_estimate, more_than50K_estimate)
 
 #finally pass this newly created data frame into the accuracy calculator that compares predictions to actual
 
-accuracy_val2<-calc_accuracy_rf(data1_test,prediction_rf)
+# CODE
+# accuracy_val2<-calc_accuracy_rf(data1_test,prediction_rf)
 
 #then we will get an accuracy rate 
-(accuracy_val2[1]+accuracy_val2[3])/(nrow(data1_test))*100
+
+# CODE
+# (accuracy_val2[1]+accuracy_val2[3])/(nrow(data1_test))*100
 ```
 
 **Customized Prediction Accuracy Calculator**  
@@ -577,6 +601,43 @@ predict_blb_glm <-function(method, test_data){
 }
 ```
 
+```{r, warning=FALSE, message=FALSE}
+incorrect_50plus2=0 #counter for number of incorrect classifications of incomes greater than 50k
+correct_50plus2=0 #counter for number of correct classifications of incomes greater than 50k
+incorrect_50less2=0 #counter for number of incorrect classifications of incomes less than 50k
+correct_50less2=0 
+
+calc_accuracy_rf<-function(test_data, predicted){
+
+  for(i in seq_len(nrow(predicted))){ #if the probability is higher for >50K then it means that predicted income is >50K
+    if(predicted[i,1]<predicted[i,2]){
+      
+      pred_income = " >50K"
+    #if the predicted income is equal to the actual income at that level then increment correct
+      if(pred_income == as.character(droplevels(test_data[i,]$income))){
+        correct_50plus2= correct_50plus2 +1
+      }
+      else{
+    #otherwise increment incorrect
+        incorrect_50plus2 = incorrect_50plus2 + 1
+      }
+    }else{ #if the probability is less for >50k then it means the predicted is <=50K
+      
+      pred_income = " <=50K"
+    #if the predicted is equal to the actual value of test data at that row 
+      if(pred_income == as.character(droplevels(test_data[i,]$income))){
+    #then increment the correct counter
+        correct_50less2= correct_50less2+1
+      }else{
+    #otherwise increment incorrect
+        incorrect_50less2 = incorrect_50less2 +1
+      }
+    }
+  }
+  return(c(correct_50plus2, incorrect_50plus2, correct_50less2, incorrect_50less2))
+}
+```
+
 ### **Analysis and Improvements**  
 For our final results, we got the coefficients from the Logistic Regression (these coefficients include implementations with and without Bag of Little Bootstraps). The results have been formatted as a table in the following order: Simple Logistic Regression without Bootstrap, then BLBGLM with Mean, BLBGLM with Median, BLBGLM with Confidence Intervals.  
 ```{r, warning=FALSE, message=FALSE}
@@ -609,7 +670,7 @@ ci2_rate<- (accuracy_ci2[1]+accuracy_ci2[3])/(nrow(data1_test))*100
 accuracy_tree<- calc_accuracy_rf(data1_test,predict(tree_income, data1_test))
 tree_rate <- (accuracy_tree[1]+accuracy_tree[3])/(nrow(data1_test))*100
 
-accuracy_val2<-calc_accuracy_rf(data1_test,prediction_rf)
+accuracy_val2<-calc_accuracy_rf(data1_test,mean_rf)
 #then we will get an accuracy rate 
 rf_rate<-(accuracy_val2[1]+accuracy_val2[3])/(nrow(data1_test))*100
 
