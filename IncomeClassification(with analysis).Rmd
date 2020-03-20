@@ -79,6 +79,8 @@ library(readr)
 library(ggplot2)
 library(tidyverse)
 library(readr)
+library(formattable)
+
 url1 <- "https://archive.ics.uci.edu/ml/machine-learning-databases/adult/adult.data"
 data1 <- read.csv(url1, header = FALSE)
 
@@ -175,6 +177,24 @@ As you can see, we used logistic regression without bootstrapping and included a
 fullmodel <- glm(income ~., family = binomial, data = data1)
 paste("The number of rows in the full logistic model:", nrow(summary(fullmodel)$coef))
 
+predicted_full<-predict(fullmodel, data1_test, type="response")
+
+#here we implemented the library caret and the predict functionto predict the classes
+#we then extracted the accuracy rate from the confusion matrix 
+library(caret)
+
+predict_df_full<-as.data.frame(predicted_full)
+
+for(i in seq_len(nrow(data1_test))){
+  if(predict_df_full$predicted[i]>.5){
+    predict_df_full$class[i] = " >50K"
+  }else{
+    predict_df_full$class[i] = " <=50K"
+  }
+}
+
+cmGLM_full<-confusionMatrix(as.factor(predict_df_full$class), data1_test$income)
+glm_rate_full<-cmGLM_full$overall[['Accuracy']]*100 
 ```
 
 By removing all the categorical variables minus race and keeping all the quanitative variables minus capital_gain, capital_loss and fnlgwt we get a manageable model. 
@@ -184,7 +204,29 @@ By removing all the categorical variables minus race and keeping all the quanita
 model1 <- glm(income ~ age + race + sex + education_num + hours_per_week, family = binomial, data = data1)
 
 coeffs_simple <- model1$coefficients
-as.data.frame(coeffs_simple)
+coeffs_simple<-as.data.frame(coeffs_simple)
+
+predicted_m1<-predict(model1, data1_test, type="response")
+
+#here we implemented the library caret and the predict functionto predict the classes
+#we then extracted the accuracy rate from the confusion matrix 
+library(caret)
+
+predict_df_m1<-as.data.frame(predicted)
+
+for(i in seq_len(nrow(data1_test))){
+  if(predict_df_m1$predicted[i]>.5){
+    predict_df_m1$class[i] = " >50K"
+  }else{
+    predict_df_m1$class[i] = " <=50K"
+  }
+}
+
+cmGLM_m1<-confusionMatrix(as.factor(predict_df_m1$class), data1_test$income)
+
+#the glm accuracy rate is calculated here
+glm_rate_m1<-cmGLM_m1$overall[['Accuracy']]*100 
+formattable(coeffs_simple)
 ```
 
 **Bootstrap (with Generalized Logistic Model)**  
@@ -220,7 +262,8 @@ After getting running the bootstraps we implemented three different ways to get 
 + confidence interval
 + median
 + mean  
-The confidence intervals give us a lower and upper bound for estimates:
+
+The confidence intervals give us a lower and upper bound for beta estimates:
 ```{r, warning=FALSE, message=FALSE}
 #Confidence interval at alpha =.05
 ci_list = future_map(seq_len(m), ~{
@@ -231,10 +274,10 @@ ci1 <- reduce(ci_list, `+`) / length(ci_list)
 ci_coeffs<-as.data.frame(t(ci1))
 ci_coeffs <- ci_coeffs %>% 
   rename("Coefficients_LowerBound"=V1, "Coefficients_UpperBound"=V2)
-ci_coeffs
+formattable(ci_coeffs)
 ```
 
-The medians give the following estimates:
+The medians give the following beta estimates:
 ```{r, warning=FALSE, message=FALSE}
 #median using the median function
 med_list = future_map(seq_len(m), ~{
@@ -245,10 +288,10 @@ med1 <- reduce(med_list, `+`) / length(med_list)
 med_coeffs<- as.data.frame(t(med1))
 med_coeffs<-med_coeffs %>% 
   rename("Coefficients_Median"=V1)
-med_coeffs
+formattable(med_coeffs)
 ```
    
-The means give the following input:
+The means give the following beta estimates:
 ```{r, warning=FALSE, message=FALSE}
 #mean using the mean function
 mean_list = future_map(seq_len(m), ~{
@@ -259,7 +302,7 @@ mean1 <- reduce(mean_list, `+`) / length(mean_list)
 mean_coeffs<-as.data.frame(t(mean1))
 mean_coeffs<-mean_coeffs %>% 
   rename("Coefficients_Mean"=V1)
-mean_coeffs
+formattable(mean_coeffs)
 ```
 
 **Random Forest**  
@@ -289,5 +332,181 @@ plot(tree_income, type = "uniform")
 text(tree_income, pretty = 1, all = TRUE, cex = 0.7)
 ```
 
+**Bootstrap (with Random Forest)**  
+To create our Bag of Little Random Forest we had to use bootstrap and then implement a random forest model. The approach was to resample from each one of the 10 subsamples 1000 times. Then we want to sample eight columns from our final list of eleven columns consisting of age, workclass, education, marital_status, occupation, relationship, race, capital_gain, capital_loss, hours_per_week and sex. In every iteration, we were creating our prediction tree off of our training data and then actually predicting the classification probabilities with our testing data. In the end we wanted to create 1000 different classification probabilities for our testing data, resulting in approximately 6,000,000 rows of data to process for 10 different bootstrapped datasets. To visualize, one can imagine one iteration of a test data set consisting of 6000 rows, and we create 1000 different probabilities to classify if each of the rows is in the >50K or <=50K income bracket. After getting our 1000 estimates for each row, we want to calculate the mean probabilities of that row being classified as >50K and <=50K. Then we simply compare which probability is higher and categorize for each row. Finally, we create a mean prediction value for each one of the subsets, so now we go from ~6,000,000 predictions for 10 subsets to ~6,000 mean predictions for 10 subsets, then we want to create 1 final prediction set consisting of ~6,000 rows. The final dataset will be benchmarked for accuracy against the actual test data values. 
 
+```{r}
+#in progress 
+```
+
+**Customized Prediction Accuracy Calculator**  
+Our team wanted to calculate how accurate our models were, but this proved to be difficult because we were trying to implement bootstrapping throughout this project. In the case in which we don’t use bootstrapping and simply use the glm or tree function once without repetition, we could easily use the confusionMatrix function to get the accuracy of our results by testing the respective models on our testing data. With bootstrapping, we would need to create a method that deals with the complexity of our data structure that have gone through transformations. Through a series of simple if else statements we were able to create two functions, one for bootstrapping with the logistic regression model and another for bootstrapping with classification/regression trees. This allowed us to calculate the accuracy of our models. 
+
+The following is an accuracy caculator for Bag of Little Bootstraps for Logistic Regression. It returns a vector of the number of:  
+
++ incorrect values categorized as >50K
++ correct values categorized as >50K
++ incorrect values categorized as <=50K
++ correct values categorized as <=50K
+
+```{r}
+#initialize counters
+incorrect_50plus=0 #counter for number of incorrect classifications of incomes greater than 50k
+correct_50plus=0 #counter for number of correct classifications of incomes greater than 50k
+incorrect_50less=0 #counter for number of incorrect classifications of incomes less than 50k
+correct_50less=0 #counter for number of correct classifications of incomes less than 50k
+
+predict_blb_glm <-function(method, test_data){
+  
+  #the accuracy vector will contain a vector of all the counters
+  acccuracy_vector <- c("Incorrect(>50k)", "Correct(>50k)","Incorrect(<=50k)", "Correct(<=50k)")
+  
+  #from the test data select the variables of interest
+  test_data <- test_data %>% 
+    select(age, race, sex, education_num, hours_per_week,income)
+  
+  #this for loop will predict the income brackets
+  for(i in seq_len(nrow(test_data))){
+    
+    test_val=test_data[i,]
+    
+    #we must use multiple if else statements to check for the race variable
+    #because it's a categorical variable
+    #use the odds= Intercept_est+
+        #age_beta1*age +
+        #`raceAsian-Pac-Islander`_beta *(0 or 1) +
+        #raceBlack_beta *(0 or 1) +
+        #raceOther_beta *(0 or 1) +
+        #raceWhite_beta *( 0 or 1) +
+        #education_num_beta *(education_num) +
+        #hours_per_week_beta *(hours_per_week)
+    
+    if(as.character(droplevels(test_val$race))== " White"){
+
+     odds= method$`(Intercept)`+
+        method$age*test_val$age +
+        method$`raceAsian-Pac-Islander`*0 +
+        method$raceBlack*0 +
+        method$raceOther*0 +
+        method$raceWhite*1 +
+        method$education_num*test_val$education_num +
+        method$hours_per_week*test_val$hours_per_week
+      
+    }else if(as.character(droplevels(test_val$race))==" Asian-Pac-Islander"){
+      odds= method$`(Intercept)`+
+        method$age*test_val$age +
+        method$`raceAsian-Pac-Islander`*1 +
+        method$raceBlack*0 +
+        method$raceOther*0 +
+        method$raceWhite*0 +
+        method$education_num*test_val$education_num +
+        method$hours_per_week*test_val$hours_per_week
+      
+    }else if(as.character(droplevels(test_val$race))==" Black"){
+      
+      odds= method$`(Intercept)`+
+        method$age*test_val$age +
+        method$`raceAsian-Pac-Islander`*0 +
+        method$raceBlack*1 +
+        method$raceOther*0 +
+        method$raceWhite*0 +
+        method$education_num*test_val$education_num +
+        method$hours_per_week*test_val$hours_per_week
+      
+    }else if(as.character(droplevels(test_val$race))==" Other"){
+      
+      odds= method$`(Intercept)`+
+        method$age*test_val$age +
+        method$`raceAsian-Pac-Islander`*0 +
+        method$raceBlack*0 +
+        method$raceOther*1 +
+        method$raceWhite*0 +
+        method$education_num*test_val$education_num +
+        method$hours_per_week*test_val$hours_per_week
+      
+    }else if(as.character(droplevels(test_val$race))==" Amer-Indian-Eskimo"){
+      
+      odds= method$`(Intercept)`+
+        method$age*test_val$age +
+        method$`raceAsian-Pac-Islander`*0 +
+        method$raceBlack*0 +
+        method$raceOther*0 +
+        method$raceWhite*0 +
+        method$education_num*test_val$education_num +
+        method$hours_per_week*test_val$hours_per_week
+      
+    }
+    
+    #use the equation exp(odds)/(1+exp(odds)) to get a probability value
+    probability = exp(odds)/(1+exp(odds))
+    
+    # if the probability is greater than .5 then the predicted income is less than 50k 
+    if(probability<.5){
+      
+      pred_income = " <=50K"
+      #if the predicted income for the test data is equal to the actual income, increment the correct counter
+      if(pred_income == as.character(droplevels(test_val$income))){ 
+        
+        correct_50less = correct_50less +1
+      }else{
+      #otherwise increment incorrect counter
+        incorrect_50less = incorrect_50less +1
+      }
+    
+    #otherwise the predicted income is greater than 50k  
+    }else{
+      
+      pred_income = " >50K"
+      #if the predicted income for the test data is equal to the actual income, increment the correct counter
+      if(pred_income == as.character(droplevels(test_val$income))){
+        correct_50plus = correct_50plus +1
+      }else{
+        #otherwise increment incorrect counter
+        incorrect_50plus = incorrect_50plus +1
+      }
+      
+    }
+    
+    
+    accuracy_vector<- c( correct_50plus, incorrect_50plus, correct_50less, incorrect_50less)
+    
+  }
+  
+  return(accuracy_vector)
+}
+```
+
+After implementing the accuracy calculator we got the following accuracy rates (in %) for the mean, median, and confidence intervals for the Bag of Little Bootstraps with the General Logistic Regression Model. 
+```{r}
+library(formattable)
+#use mean1 to calculate an accuracy vector on the test data
+accuracy_mean<- predict_blb_glm(mean1, data1_test)
+
+mean_rate<- (accuracy_mean[1]+accuracy_mean[3])/(nrow(data1_test))*100
+
+#use med1 to calculate an accuracy vector on the test data
+accuracy_median<- predict_blb_glm(med1, data1_test)
+
+median_rate<- (accuracy_median[1]+accuracy_median[3])/(nrow(data1_test))*100
+
+#use the confidence interval to calculate an accuracy vector on the test data
+accuracy_ci1<- predict_blb_glm(ci1[1,],data1_test) #this calculates for the lower bound
+accuracy_ci2<- predict_blb_glm(ci1[2,],data1_test) #this calculates for the upper bound
+
+ci1_rate<- (accuracy_ci1[1]+accuracy_ci1[3])/(nrow(data1_test))*100
+
+ci2_rate<- (accuracy_ci2[1]+accuracy_ci2[3])/(nrow(data1_test))*100
+
+accuracy_rates<-as.data.frame(t(c(glm_rate_full, mean_rate, median_rate, ci1_rate, ci2_rate, glm_rate_m1))) %>% 
+  rename("GLM (full, no bootstrap)"=V1,
+         "Model 1, no bootsrap"=V2,
+          "Mean Rate"=V3, 
+         "Median Rate"=V4, 
+         "CI Rate (Lower)"=V5,
+         "CI Rate (Upper)"=V6)
+
+formattable(accuracy_rates)
+```
+
+### **Analysis and Improvements**
 
