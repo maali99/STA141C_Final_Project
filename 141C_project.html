@@ -497,42 +497,52 @@ test_stat8 &lt;- (b8-0)/SE_b8
 <pre class="r"><code>2*(1-pnorm(abs(test_stat8)))</code></pre>
 <pre><code>## Hours_week 
 ##          0</code></pre>
-<pre class="r"><code># odds of income &gt;=50k with all refernce variables active and others held constant
+<pre class="r"><code># odds of income &gt;50k with all refernce variables active and others held constant
 exp(b0)</code></pre>
 <pre><code>##  (Intercept) 
 ## 6.880368e-05</code></pre>
-<pre class="r"><code># odds of income &gt;=50k given age
+<pre class="r"><code># odds of income &gt;50k given age holding all others constant
 exp(b1)</code></pre>
 <pre><code>##      Age 
 ## 1.046185</code></pre>
-<pre class="r"><code># odds of income &gt;=50k for asian-pacific islander holding all others constant
+<pre class="r"><code># odds of income &gt;50k for asian-pacific islander holding all others constant
 exp(b2)</code></pre>
 <pre><code>## Race Asian-Pac-Islander 
 ##                1.498309</code></pre>
-<pre class="r"><code># odds of income &gt;=50k for black holding all others constant
+<pre class="r"><code># odds of income &gt;50k for black holding all others constant
 exp(b3)</code></pre>
 <pre><code>## Race Black 
 ##   1.181528</code></pre>
-<pre class="r"><code># odds of income &gt;=50k for other holding all others constant
+<pre class="r"><code># odds of income &gt;50k for other holding all others constant
 exp(b4)</code></pre>
 <pre><code>## Race Other 
 ##  0.8290422</code></pre>
-<pre class="r"><code># odds of income &gt;=50k for white holding all others constant
+<pre class="r"><code># odds of income &gt;50k for white holding all others constant
 exp(b5)</code></pre>
 <pre><code>## Race White 
 ##   1.786006</code></pre>
-<pre class="r"><code># odds of income &gt;=50k for male holding all others constant
+<pre class="r"><code># odds of income &gt;50k for male holding all others constant
 exp(b6)</code></pre>
 <pre><code>## Sex Male 
 ## 3.116482</code></pre>
-<pre class="r"><code># odds of income &gt;=50k for education number holding all others constant
+<pre class="r"><code># odds of income &gt;50k for education number holding all others constant
 exp(b7)</code></pre>
 <pre><code>## Education_num 
 ##      1.422171</code></pre>
-<pre class="r"><code># odds of income &gt;=50k for hours worked per week holding all others constant
+<pre class="r"><code># odds of income &gt;50k for hours worked per week holding all others constant
 exp(b8)</code></pre>
 <pre><code>## Hours_week 
 ##   1.035904</code></pre>
+<pre class="r"><code># probabilty of 50 year old white male with a bachelors who works 40 hours a week having income greater than 50k annually
+num1 &lt;- exp(-9.584253 + 0.045151*50 + 0.579982 + 1.136705 + 0.352185*13 + 0.035275*40)
+den1 &lt;- 1 + num1
+(prob1 &lt;- num1/den1)</code></pre>
+<pre><code>## [1] 0.5937257</code></pre>
+<pre class="r"><code># probability of 25 year old black female with bachelors who works 40 hours a week
+num2 &lt;- exp(-9.584253 + 0.045151*25 + 0.166809 + 0.352185*13 + 0.035275*40)
+den2 &lt;- 1 + num2
+(prob2 &lt;- num2/den2)</code></pre>
+<pre><code>## [1] 0.09118393</code></pre>
 </div>
 
 

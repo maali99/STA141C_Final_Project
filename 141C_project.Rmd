@@ -82,24 +82,36 @@ test_stat8 <- (b8-0)/SE_b8
 
 
 ```{r}
-# odds of income >=50k with all refernce variables active and others held constant
+# odds of income >50k with all refernce variables active and others held constant
 exp(b0)
-# odds of income >=50k given age
+# odds of income >50k given age holding all others constant
 exp(b1)
-# odds of income >=50k for asian-pacific islander holding all others constant
+# odds of income >50k for asian-pacific islander holding all others constant
 exp(b2)
-# odds of income >=50k for black holding all others constant
+# odds of income >50k for black holding all others constant
 exp(b3)
-# odds of income >=50k for other holding all others constant
+# odds of income >50k for other holding all others constant
 exp(b4)
-# odds of income >=50k for white holding all others constant
+# odds of income >50k for white holding all others constant
 exp(b5)
-# odds of income >=50k for male holding all others constant
+# odds of income >50k for male holding all others constant
 exp(b6)
-# odds of income >=50k for education number holding all others constant
+# odds of income >50k for education number holding all others constant
 exp(b7)
-# odds of income >=50k for hours worked per week holding all others constant
+# odds of income >50k for hours worked per week holding all others constant
 exp(b8)
 
+```
+
+```{r}
+# probabilty of 50 year old white male with a bachelors who works 40 hours a week having income greater than 50k annually
+num1 <- exp(-9.584253 + 0.045151*50 + 0.579982 + 1.136705 + 0.352185*13 + 0.035275*40)
+den1 <- 1 + num1
+(prob1 <- num1/den1)
+
+# probability of 25 year old black female with bachelors who works 40 hours a week
+num2 <- exp(-9.584253 + 0.045151*25 + 0.166809 + 0.352185*13 + 0.035275*40)
+den2 <- 1 + num2
+(prob2 <- num2/den2)
 ```
 
