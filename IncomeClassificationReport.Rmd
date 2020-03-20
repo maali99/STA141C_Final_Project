@@ -244,7 +244,7 @@ suppressMessages(library(tidyverse))
 library(furrr)
 
 plan(multiprocess, workers = 4)
-B = 1000
+B = 10000
 n = nrow(data1)
 
 m <- 10
@@ -341,7 +341,7 @@ suppressMessages(library(tidyverse))
 library(furrr)
 plan(multiprocess, workers = 4)
 #set B to 1000
-B <- 10
+B <- 10000
 #we will be sampling 8 columns for our resampling 
 m <- 8
 #set n to the number of rows in the training set aka data1
@@ -639,14 +639,15 @@ calc_accuracy_rf<-function(test_data, predicted){
 ```
 
 ### **Analysis and Improvements**  
-For our final results, we got the coefficients from the Logistic Regression (these coefficients include implementations with and without Bag of Little Bootstraps). The results have been formatted as a table in the following order: Simple Logistic Regression without Bootstrap, then BLBGLM with Mean, BLBGLM with Median, BLBGLM with Confidence Intervals.  
+For our final results, we got the coefficients from the Logistic Regression (these coefficients include implementations with and without Bag of Little Bootstraps). The results have been formatted as a table in the following order: Simple Logistic Regression without Bootstrap, then BLBGLM with Mean, BLBGLM with Median, BLBGLM with Confidence Intervals.    
 ```{r, warning=FALSE, message=FALSE}
 coeffs_df<-as.data.frame(cbind(coeffs_simple, mean_coeffs, med_coeffs, ci_coeffs))
 coeffs_df <- coeffs_df %>% 
   rename(Coefficients_Simple=coeffs_simple)
 formattable(coeffs_df)
 ```
-After implementing the accuracy calculator we created a table of accuracy rates (in %) for the mean, median, and confidence intervals for the Bag of Little Bootstraps with the General Logistic Regression Model and joined it with the accuracy rates for the simpler models that don't use Bag of Little Bootstraps. The table input for accuracy is based on the following models: GLM on the full model, GLM without bootstrap (selected), then BLBGLM with mean, BLBGLM with median, BLBGLM with confidence intervals.  
+
+After implementing the accuracy calculator we created a table of accuracy rates (in %) for the mean, median, and confidence intervals for the Bag of Little Bootstraps with the General Logistic Regression Model and joined it with the accuracy rates for the simpler models that don't use Bag of Little Bootstraps. The table input for accuracy is based on the following models: GLM on the full model, GLM without bootstrap (selected), then BLBGLM with mean, BLBGLM with median, BLBGLM with confidence intervals.      
 ```{r, warning=FALSE, message=FALSE}
 library(formattable)
 #use mean1 to calculate an accuracy vector on the test data
@@ -686,9 +687,13 @@ accuracy_rates<-as.data.frame(t(c(glm_rate_full, mean_rate, median_rate, ci1_rat
 
 formattable(accuracy_rates)
 ```
-From the above table it is evident that the most accurate model is the General Logistic Regression model that did not use any bootstrapping as it had the highest accuracy rate at 84.58%. On the contrary the GLM we used regressing against the variables that would eventually be used in the BLB are has a lower accuracy rate at 75.96%. We would expect this because the first model uses all the variables, implying that the smaller model may have dropped some significant variables. Given the circumstances of our approach, we had to drop some variables to make this BLBGLM possible, even though a BLBGLM using all variables would be amazing it is not practical in the sense that it creates 96 different estimates. So to move forward we applied our BLBGLM to this logistic model that had less variables. Thankfully, the numbers showed that BLBGLM was effective since the accuracy rates went up for all estimation methods, minus the median estimates. The best results were acquired by using the confidence intervals, in which we acquired much better results.     
 
-As stated before, we were not able to create a Bag of Little Random Forests because of the time crunch, but based on our accuracy rates for the simple classification tree and the Random Forest, we would expect to get even better results with the Bag of Little Random Forests. When compared to the BLBGLM we get better results from Random Forest. This implies that there might be more power to the Random Forest approach given that the accuracy is higher even though the sampling was lower for Random Forest. For the future, we now know that in the case of data with a lot of categorical variables and levels Bag of Little Random Forests would be an effective approach.   
+From the above table it is evident that the most accurate model is the General Logistic Regression model that did not use any bootstrapping as it had the highest accuracy rate at 84.58%. On the contrary the GLM we used regressing against the variables that would eventually be used in the BLB are has a lower accuracy rate at 75.96%. We would expect this because the first model uses all the variables, implying that the smaller model may have dropped some significant variables. Given the circumstances of our approach, we had to drop some variables to make this BLBGLM possible, even though a BLBGLM using all variables would be amazing it is not practical in the sense that it creates 96 different estimates. So to move forward we applied our BLBGLM to this logistic model that had less variables. Thankfully, the numbers showed that BLBGLM was effective since the accuracy rates went up for all estimation methods, minus the median estimates. The best results were acquired by using the confidence intervals, in which we acquired much better results.         
 
-Fr now we can conclude that the best method to reduce our estimates, in terms of the Bag of Little Boostraps with Logistic Regression, is the confidence interval approach (in the above table under "CI Rate (Upper)" and "CI Rate (Lower)").
+As stated before, we were not able to create a Bag of Little Random Forests because of the time crunch, but based on our accuracy rates for the simple classification tree and the Random Forest, we would expect to get even better results with the Bag of Little Random Forests. When compared to the BLBGLM we get better results from Random Forest. This implies that there might be more power to the Random Forest approach given that the accuracy is higher even though the sampling was lower for Random Forest. For the future, we now know that in the case of data with a lot of categorical variables and levels Bag of Little Random Forests would be an effective approach.       
+
+For now we can conclude that the best method to reduce our estimates, in terms of the Bag of Little Boostraps with Logistic Regression, is the confidence interval approach (in the above table under "CI Rate (Upper)" and "CI Rate (Lower)"). So in the case of obtaining an estimate for our classfication, we can use the following estimates to get a lower bound estimate and an upper bound estimate:     
+
+Income = 
+
 
