@@ -247,7 +247,7 @@ med_coeffs<-med_coeffs %>%
   rename("Coefficients_Median"=V1)
 med_coeffs
 ```
-
+   
 The means give the following input:
 ```{r, warning=FALSE, message=FALSE}
 #mean using the mean function
