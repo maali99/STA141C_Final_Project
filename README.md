@@ -1,6 +1,11 @@
 # STA141C_Final_Project
 
-# OUTLINE:
+# This repository contains three files: 
+- STA 141C Final Report (Winter 2020) which is the pdf of the actual report 
+- IncomeClassificationReport.rmd which is the report in an rmd format, we were not able to knit this file
+- IncomeClassificationAppendix.rmd which is the appendix containing all the code
+
+# GENERAL OUTLINE OF "STA 141C Final Report (Winter 2020)" 
 
 # Introduction 
 - Goal 
@@ -14,10 +19,6 @@
 - Reason for Dropping variables 
 - Final selection 
 
-# Bootstrap 
-- Estimate se
-- Chart of estimates
+# Methodology and Process
 
-# Analysis
-- Logistic regression
-- Analysis of odds
+# Analysis and Improvements 
