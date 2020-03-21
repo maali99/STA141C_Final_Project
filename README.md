@@ -20,5 +20,9 @@
 - Final selection 
 
 # Methodology and Process
+- The process of analysis 
+- Bag of Little Bootstraps with GLM
 
 # Analysis and Improvements 
+- What steps can be taken to improve this
+- Are there better models out there
