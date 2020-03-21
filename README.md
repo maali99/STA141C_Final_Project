@@ -11,7 +11,6 @@
 - Goal 
 - Source of data
 - Questions 
-- Methodology
 - Variables 
 
 # Exploratory Data Analysis
